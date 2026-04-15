@@ -16,19 +16,6 @@ function doLogin(){
 function doLogout(){localStorage.removeItem('activeKey');document.getElementById('app').style.display='none';document.getElementById('loginScreen').style.display='flex';}
 window.addEventListener('load',function(){const s=localStorage.getItem('activeKey');if(s&&KEYS.includes(s)){document.getElementById('loginScreen').style.display='none';document.getElementById('app').style.display='flex';setTimeout(()=>map.invalidateSize(),100);}});
 document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
-
-window.addEventListener('load',function(){
-  const saved=localStorage.getItem('activeKey');
-  if(saved&&['MIT9Z2HA','DPFSJ2PE','GDXE3VZU','587FL10Z','KXIAIQ8V'].includes(saved)){
-    document.getElementById('loginScreen').style.display='none';
-    document.getElementById('app').style.display='flex';
-    if(navigator.geolocation)navigator.geolocation.getCurrentPosition(
-      ()=>document.getElementById('st').textContent='Konum hazÄ±r.',
-      ()=>document.getElementById('st').textContent='Konum izni reddedildi.'
-    );
-  }
-});
-
 </script><style>*{margin:0;padding:0;box-sizing:border-box}html,body{height:100%;overflow:hidden;background:#0d1117;color:#e6edf3;font-family:sans-serif}#app{display:flex;flex-direction:column;height:100vh}#top{flex-shrink:0;background:#161b22;border-bottom:1px solid #21262d;padding:8px 14px}#top h1{font-size:13px;color:#58a6ff;font-weight:700}#top p{font-size:10px;color:#8b949e}#map{flex:1;min-height:0}#panel{flex-shrink:0;background:#0d1117;border-top:2px solid #21262d;padding:10px 12px}#cards{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.card{background:#161b22;border:1px solid #30363d;border-radius:8px;padding:6px 10px;min-width:80px;flex:1;text-align:center}.co{border-color:#58a6ff;background:#0d2045}.cl{border-color:#f85149;background:#2d0f0e}.cr{border-color:#3fb950;background:#0a2714}.ck{border-color:#e3b341;background:#2a1f00}.lb{font-size:9px;color:#8b949e;text-transform:uppercase;margin-bottom:2px}.vl{font-size:18px;font-weight:800}.un{font-size:9px;color:#8b949e}.co .vl{color:#58a6ff}.cl .vl{color:#f85149}.cr .vl{color:#3fb950}.ck .vl{color:#e3b341}#btn{background:#238636;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer}#btn.stop{background:#da3633}#st{font-size:10px;color:#8b949e;margin-left:8px}.du{width:14px;height:14px;background:#58a6ff;border:3px solid #fff;border-radius:50%}.dp{width:8px;height:8px;background:#e3b341;border:2px solid #fff;border-radius:50%}
 #loginScreen{position:fixed;inset:0;background:#0d1117;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;padding:30px}
 #loginScreen h1{font-size:22px;color:#58a6ff;font-weight:700;margin-bottom:8px;text-align:center}
@@ -39,12 +26,12 @@ window.addEventListener('load',function(){
 #loginError{color:#f85149;font-size:12px;margin-top:10px;text-align:center;min-height:20px}
 #logoutBtn{font-size:10px;color:#8b949e;background:none;border:1px solid #30363d;border-radius:4px;padding:2px 8px;cursor:pointer}
 
-#kesitPanel{position:fixed;bottom:0;left:0;right:0;background:#0d1117;border-top:2px solid #58a6ff;z-index:2000;display:none;flex-direction:column;max-height:55vh}
+#kesitPanel{position:fixed;bottom:0;left:0;right:0;background:#0d1117;border-top:2px solid #58a6ff;z-index:2000;display:none;flex-direction:column;max-height:60vh}
 #kesitHeader{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;background:#161b22;border-bottom:1px solid #21262d;flex-shrink:0}
 #kesitHeader h3{font-size:12px;color:#58a6ff;font-weight:700}
-#closeKesit{background:none;border:1px solid #30363d;color:#8b949e;border-radius:4px;padding:2px 8px;font-size:11px;cursor:pointer}
-#kesitInfo{font-size:11px;color:#e3b341;padding:4px 12px;flex-shrink:0}
-#kesitCanvas{width:100%;height:200px;display:block}
+#closeKesit{background:none;border:1px solid #30363d;color:#ccc;border-radius:4px;padding:2px 10px;font-size:12px;cursor:pointer}
+#kesitInfo{font-size:11px;color:#e3b341;padding:3px 12px;flex-shrink:0}
+#kesitCanvas{width:100%;height:220px;display:block}
 </style></head><body><div id='loginScreen'>
   <h1>&#128205; GÃ¼zergah Offset</h1>
   <p>EriÅŸim iÃ§in ÅŸifrenizi girin</p>
@@ -67,7 +54,7 @@ function showKesit(km){
   if(!profile)return;
   document.getElementById('kesitPanel').style.display='flex';
   document.getElementById('kesitInfo').textContent='KM: '+km.toFixed(3);
-  const axisZ=profile[Math.floor(profile.length/2)][1];
+  const axisZ=profile.find(p=>p[0]===0)?profile.find(p=>p[0]===0)[1]:profile[Math.floor(profile.length/2)][1];
   setTimeout(()=>drawKesit(profile,axisZ),50);
   map.invalidateSize();
 }
@@ -80,18 +67,23 @@ function closeKesit(){
 function drawKesit(profile,axisZ){
   const canvas=document.getElementById('kesitCanvas');
   const W=canvas.parentElement.clientWidth||window.innerWidth;
-  const H=200;canvas.width=W;canvas.height=H;
+  const H=220;canvas.width=W;canvas.height=H;
   const ctx=canvas.getContext('2d');
   ctx.fillStyle='#0d1117';ctx.fillRect(0,0,W,H);
   if(!profile||profile.length<2)return;
+
+  // Arazi Z degerleri
   const xs=profile.map(p=>p[0]),zs=profile.map(p=>p[1]);
   const xmin=Math.min(...xs),xmax=Math.max(...xs);
-  const zmin=Math.min(...zs)-3,zmax=Math.max(...zs)+8;
-  const pad={l:40,r:10,t:15,b:30};
+  const zmin=Math.min(...zs,axisZ-5)-2;
+  const zmax=Math.max(...zs,axisZ+5)+5;
+  const pad={l:42,r:10,t:18,b:30};
   const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
   function tx(x){return pad.l+(x-xmin)/(xmax-xmin)*cw;}
   function tz(z){return pad.t+ch-(z-zmin)/(zmax-zmin)*ch;}
-  ctx.strokeStyle='#21262d';ctx.lineWidth=0.5;
+
+  // Grid
+  ctx.strokeStyle='#1e2a1e';ctx.lineWidth=0.5;
   for(let z=Math.ceil(zmin/5)*5;z<=zmax;z+=5){
     ctx.beginPath();ctx.moveTo(pad.l,tz(z));ctx.lineTo(pad.l+cw,tz(z));ctx.stroke();
     ctx.fillStyle='#8b949e';ctx.font='9px sans-serif';ctx.textAlign='right';
@@ -102,29 +94,110 @@ function drawKesit(profile,axisZ){
     ctx.fillStyle='#8b949e';ctx.font='9px sans-serif';ctx.textAlign='center';
     ctx.fillText((x>=0?'+':'')+x,tx(x),H-5);
   }
+
+  // Tabi zemin - dolu
+  ctx.beginPath();
+  ctx.moveTo(tx(xmin),tz(zmin));
+  for(let i=0;i<profile.length;i++) ctx.lineTo(tx(profile[i][0]),tz(profile[i][1]));
+  ctx.lineTo(tx(xmax),tz(zmin));
+  ctx.closePath();
+  ctx.fillStyle='rgba(101,67,33,0.5)';ctx.fill();
+  // Arazi cizgisi
   ctx.beginPath();ctx.strokeStyle='#e3b341';ctx.lineWidth=2;
   for(let i=0;i<profile.length;i++){const px=tx(profile[i][0]),pz=tz(profile[i][1]);i===0?ctx.moveTo(px,pz):ctx.lineTo(px,pz);}
   ctx.stroke();
-  ctx.lineTo(tx(xmax),tz(zmin));ctx.lineTo(tx(xmin),tz(zmin));ctx.closePath();
-  ctx.fillStyle='rgba(139,100,20,0.25)';ctx.fill();
-  const hw=3.5,sev=0.5,sbTop=axisZ+0.5;
-  ctx.strokeStyle='#3fb950';ctx.lineWidth=2;
-  ctx.beginPath();ctx.moveTo(tx(-hw),tz(sbTop));ctx.lineTo(tx(hw),tz(sbTop));ctx.stroke();
-  ctx.beginPath();ctx.moveTo(tx(-hw),tz(sbTop));
-  for(let d=hw;d<=80;d+=1){const z2=sbTop+d*sev;ctx.lineTo(tx(-d),tz(z2));if(z2>zmax)break;}
-  ctx.stroke();
-  ctx.beginPath();ctx.moveTo(tx(hw),tz(sbTop));
-  for(let d=hw;d<=80;d+=1){const z2=sbTop+d*sev;ctx.lineTo(tx(d),tz(z2));if(z2>zmax)break;}
-  ctx.stroke();
+
+  // Tip kesit parametreleri
+  const hw=3.5;   // yarim platform genisligi
+  const sb=0.3;   // subbalast kalinligi
+  const at=0.2;   // alttemel kalinligi
+  const sev=0.5;  // sev orani (H:V = 1:2)
+  const platTop=axisZ+sb; // platform ust kotu
+  const platBot=axisZ-at; // platform alt kotu
+
+  // Yarma mi dolgu mu?
+  // Eksen noktasindaki arazi kotu
+  const ariziZ=profile.find(p=>p[0]===0)?profile.find(p=>p[0]===0)[1]:(profile[Math.floor(profile.length/2)][1]);
+  const isYarma=(ariziZ>axisZ+0.5);
+
+  if(isYarma){
+    // YARMA: arazi eksenin ustunde, sev yukari gider
+    ctx.strokeStyle='#58a6ff';ctx.lineWidth=2;
+    // Platform ust
+    ctx.beginPath();ctx.moveTo(tx(-hw),tz(platTop));ctx.lineTo(tx(hw),tz(platTop));ctx.stroke();
+    // Sol sev - yukari
+    ctx.beginPath();ctx.moveTo(tx(-hw),tz(platTop));
+    for(let d=0;d<=80;d+=0.5){
+      const z2=platTop+(d)*sev;
+      ctx.lineTo(tx(-hw-d),tz(z2));
+      if(z2>=Math.max(...zs)+2)break;
+    }
+    ctx.stroke();
+    // Sag sev - yukari
+    ctx.beginPath();ctx.moveTo(tx(hw),tz(platTop));
+    for(let d=0;d<=80;d+=0.5){
+      const z2=platTop+(d)*sev;
+      ctx.lineTo(tx(hw+d),tz(z2));
+      if(z2>=Math.max(...zs)+2)break;
+    }
+    ctx.stroke();
+    // Etiket
+    ctx.fillStyle='#58a6ff';ctx.font='bold 10px sans-serif';ctx.textAlign='left';
+    ctx.fillText('YARMA',pad.l+5,pad.t+12);
+  }else{
+    // DOLGU: platform arazinin ustunde, sev asagi gider
+    ctx.strokeStyle='#f97316';ctx.lineWidth=2;
+    // Platform ust
+    ctx.beginPath();ctx.moveTo(tx(-hw),tz(platTop));ctx.lineTo(tx(hw),tz(platTop));ctx.stroke();
+    // Platform yanal - baking yolu
+    ctx.beginPath();ctx.moveTo(tx(-hw),tz(platTop));ctx.lineTo(tx(-hw-2),tz(platTop-0.05));ctx.stroke();
+    ctx.beginPath();ctx.moveTo(tx(hw),tz(platTop));ctx.lineTo(tx(hw+2),tz(platTop-0.05));ctx.stroke();
+    // Sol sev - asagi
+    ctx.beginPath();ctx.moveTo(tx(-hw-2),tz(platTop));
+    for(let d=0;d<=80;d+=0.5){
+      const z2=platTop-(d)*sev;
+      ctx.lineTo(tx(-hw-2-d),tz(z2));
+      if(z2<=ariziZ-1)break;
+    }
+    ctx.stroke();
+    // Sag sev - asagi
+    ctx.beginPath();ctx.moveTo(tx(hw+2),tz(platTop));
+    for(let d=0;d<=80;d+=0.5){
+      const z2=platTop-(d)*sev;
+      ctx.lineTo(tx(hw+2+d),tz(z2));
+      if(z2<=ariziZ-1)break;
+    }
+    ctx.stroke();
+    // Etiket
+    ctx.fillStyle='#f97316';ctx.font='bold 10px sans-serif';ctx.textAlign='left';
+    ctx.fillText('DOLGU',pad.l+5,pad.t+12);
+  }
+
+  // Platform dolgu (subbalast+alttemel)
+  ctx.fillStyle='rgba(100,180,100,0.3)';
+  ctx.fillRect(tx(-hw),tz(platTop),tx(hw)-tx(-hw),tz(platBot)-tz(platTop));
+  ctx.strokeStyle='#3fb950';ctx.lineWidth=1;
+  ctx.strokeRect(tx(-hw),tz(platTop),tx(hw)-tx(-hw),tz(platBot)-tz(platTop));
+
+  // Ray
+  for(const rx of [-0.75,0.75]){
+    ctx.fillStyle='#ff8c42';
+    ctx.fillRect(tx(rx)-3,tz(platTop)-5,6,6);
+  }
+
+  // Eksen
   ctx.strokeStyle='#ff4444';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
   ctx.beginPath();ctx.moveTo(tx(0),pad.t);ctx.lineTo(tx(0),pad.t+ch);ctx.stroke();
   ctx.setLineDash([]);
   ctx.fillStyle='#ff4444';ctx.font='bold 9px sans-serif';ctx.textAlign='center';
-  ctx.fillText('EKSEN',tx(0),pad.t+9);
-  for(const rx of [-0.75,0.75]){ctx.fillStyle='#ff8c42';ctx.fillRect(tx(rx)-3,tz(sbTop)-4,6,5);}
-  ctx.fillStyle='#e3b341';ctx.font='10px sans-serif';ctx.textAlign='left';
-  ctx.fillText('â€” Tabi Zemin',pad.l+5,pad.t+11);
-  ctx.fillStyle='#3fb950';ctx.fillText('â€” Tip Kesit',pad.l+5,pad.t+22);
+  ctx.fillText('EKSEN',tx(0),pad.t+10);
+
+  // Eksen kotu cizgisi
+  ctx.strokeStyle='rgba(255,68,68,0.4)';ctx.lineWidth=1;ctx.setLineDash([2,4]);
+  ctx.beginPath();ctx.moveTo(pad.l,tz(axisZ));ctx.lineTo(pad.l+cw,tz(axisZ));ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,68,68,0.8)';ctx.font='9px sans-serif';ctx.textAlign='right';
+  ctx.fillText(axisZ.toFixed(1),pad.l-2,tz(axisZ)+3);
 }
 
 // KM etiketleri
@@ -136,21 +209,33 @@ function drawKesit(profile,axisZ){
     if(kmInt>lastKm&&kmInt>0){
       lastKm=kmInt;
       const inRange=(kmInt>=53&&kmInt<=67);
-      const bg=inRange?'rgba(0,80,0,0.85)':'rgba(0,0,50,0.75)';
+      const bg=inRange?'rgba(0,100,0,0.9)':'rgba(0,0,50,0.75)';
       const border=inRange?'#3fb950':'#58a6ff';
-      const txt=inRange?kmInt+'&#x1F50D;':kmInt;
+      const label=inRange?kmInt+' &#9654;':String(kmInt);
       const icon=L.divIcon({
         className:'',
-        html:'<div style="background:'+bg+';color:#fff;font-size:10px;font-weight:700;padding:2px 5px;border-radius:3px;border:1px solid '+border+';white-space:nowrap;">'+txt+'</div>',
-        iconAnchor:[15,8]
+        html:'<div style="background:'+bg+';color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;border:1px solid '+border+';white-space:nowrap;cursor:pointer;">'+label+'</div>',
+        iconAnchor:[16,8]
       });
       const marker=L.marker([A[i][1],A[i][0]],{icon:icon,zIndexOffset:500}).addTo(map);
       if(inRange){
-        (function(k){marker.on('click',function(){showKesit(k);})})(kmInt+0.1);
+        (function(k){marker.on('click',function(e){L.DomEvent.stopPropagation(e);showKesit(k+0.05);})})(kmInt);
       }
     }
   }
 })();
+
+window.addEventListener('load',function(){
+  const saved=localStorage.getItem('activeKey');
+  if(saved&&['MIT9Z2HA','DPFSJ2PE','GDXE3VZU','587FL10Z','KXIAIQ8V'].includes(saved)){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    if(navigator.geolocation)navigator.geolocation.getCurrentPosition(
+      ()=>document.getElementById('st').textContent='Konum hazir.',
+      ()=>document.getElementById('st').textContent='Konum izni reddedildi.'
+    );
+  }
+});
 function fc(lat,lon){let md=Infinity,si=0,bt=0,cx=0,cy=0;for(let i=0;i<A.length-1;i++){const ax=A[i][0],ay=A[i][1],bx=A[i+1][0],by=A[i+1][1],dx=bx-ax,dy=by-ay,lq=dx*dx+dy*dy;let t=lq>0?((lon-ax)*dx+(lat-ay)*dy)/lq:0;t=Math.max(0,Math.min(1,t));const px=ax+t*dx,py=ay+t*dy;const mlat=lat*Math.PI/180;const ddx=(lon-px)*111320*Math.cos(mlat),ddy=(lat-py)*111320,d=Math.sqrt(ddx*ddx+ddy*ddy);if(d<md){md=d;si=i;bt=t;cx=px;cy=py;}}const ax=A[si][0],ay=A[si][1],bx=A[si+1][0],by=A[si+1][1];const cross=(bx-ax)*(lat-ay)-(by-ay)*(lon-ax);const km=cd[si]+bt*(cd[si+1]-cd[si]);return{d:md,s:cross>0?'SOL':'SAG',px:cx,py:cy,km};}const iu=L.divIcon({className:'',html:'<div class=du></div>',iconSize:[14,14],iconAnchor:[7,7]});const ip=L.divIcon({className:'',html:'<div class=dp></div>',iconSize:[8,8],iconAnchor:[4,4]});let mu=null,mp=null,ml=null,wid=null;function tog(){const b=document.getElementById('btn');if(wid!==null){navigator.geolocation.clearWatch(wid);wid=null;b.textContent='Baslat';b.className='';return;}b.textContent='Durdur';b.className='stop';wid=navigator.geolocation.watchPosition(onP,onE,{enableHighAccuracy:true,maximumAge:1500,timeout:20000});}function onP(p){const lat=p.coords.latitude,lon=p.coords.longitude,acc=Math.round(p.coords.accuracy);if(!mu)mu=L.marker([lat,lon],{icon:iu,zIndexOffset:1000}).addTo(map);else mu.setLatLng([lat,lon]);const r=fc(lat,lon);if(!mp)mp=L.marker([r.py,r.px],{icon:ip,zIndexOffset:900}).addTo(map);else mp.setLatLng([r.py,r.px]);if(ml)map.removeLayer(ml);const col=r.s==='SOL'?'#f85149':'#3fb950';ml=L.polyline([[lat,lon],[r.py,r.px]],{color:col,weight:2,dashArray:'6,4'}).addTo(map);document.getElementById('vO').textContent=Math.round(r.d);const cd2=document.getElementById('cD');document.getElementById('vD').textContent=r.s;cd2.className='card '+(r.s==='SOL'?'cl':'cr');document.getElementById('vK').textContent=(r.km/1000).toFixed(3);document.getElementById('vA').textContent=acc;document.getElementById('st').textContent='Offset:'+Math.round(r.d)+'m '+r.s+' KM:'+(r.km/1000).toFixed(2);if(document.getElementById("kesitPanel").style.display==="none")map.panTo([lat,lon],{animate:true,duration:.4});}function onE(e){const m={1:'Izin reddedildi.',2:'Konum yok.',3:'Zaman asimi.'};document.getElementById('st').textContent=m[e.code]||e.message;document.getElementById('btn').textContent='Baslat';document.getElementById('btn').className='';wid=null;}
 const KEYS=['MIT9Z2HA','DPFSJ2PE','GDXE3VZU','587FL10Z','KXIAIQ8V'];
 const USED=JSON.parse(localStorage.getItem('usedKeys')||'[]');
@@ -172,10 +257,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 </script>
 <div id='kesitPanel'>
   <div id='kesitHeader'>
-    <h3>&#128202; En Kesit</h3>
-    <button id='closeKesit' onclick='closeKesit()'>âœ• Kapat</button>
+    <h3>En Kesit Gorunumu</h3>
+    <button id='closeKesit' onclick='closeKesit()'>X Kapat</button>
   </div>
-  <div id='kesitInfo'>KM: â€”</div>
+  <div id='kesitInfo'>KM: ---</div>
   <canvas id='kesitCanvas'></canvas>
 </div>
 </body></html>
