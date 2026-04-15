@@ -67,7 +67,8 @@ function closeKesit(){
 function drawKesit(profile,axisZ){
   const canvas=document.getElementById('kesitCanvas');
   const W=canvas.parentElement.clientWidth||window.innerWidth;
-  const H=280;canvas.width=W*2;canvas.height=H*2;
+  const H=280;
+  canvas.width=W*2;canvas.height=H*2;
   canvas.style.width=W+'px';canvas.style.height=H+'px';
   const ctx=canvas.getContext('2d');
   ctx.scale(2,2);
@@ -76,49 +77,62 @@ function drawKesit(profile,axisZ){
 
   // Tip kesit olculeri (metre)
   const SUBBALAST=0.30;
-  const ALTTEMEL=0.35;       // ortalama
-  const RAY_ARASI=1.45;      // iki hat arasi
-  const HAT_ARASI=4.50;      // hat eksenleri arasi (3+1.5)
-  const PLATFORM_W=7.25;     // yarim platform genisligi (her taraf)
-  const BAKIM_YOLU=4.00;     // bakim yolu genisligi
-  const BAKIM_OFF=1.00;      // bakim yolu offset
-  const SEV=2.0;             // 2/1 (yatay/dikey)
-  const PALYE_H=5.0;         // palye yuksekligi
-  const TEL_CIT=0.50;        // tel cit mesafesi
+  const ALTTEMEL=0.35;
+  const PLATFORM_W=7.25;   // yarim platform (her taraf)
+  const BAKIM_YOLU=4.00;
+  const SEV=2.0;           // 2/1 sev
+  const PALYE_H=5.0;
+  const hatL=-2.25;        // sol hat ekseni
+  const hatR=+2.25;        // sag hat ekseni
 
-  const xs=profile.map(p=>p[0]),zs=profile.map(p=>p[1]);
-  const ariziZ=profile.find(p=>p[0]===0)?profile.find(p=>p[0]===0)[1]:profile[Math.floor(profile.length/2)][1];
-  const isYarma=(ariziZ>axisZ+0.3);
-  const kazikotu=axisZ-ALTTEMEL-SUBBALAST;
-  const platTop=axisZ+SUBBALAST;
+  const xs=profile.map(p=>p[0]);
+  const zs=profile.map(p=>p[1]);
+  
+  // Eksen arazi kotu
+  const ariziZ=axisZ;
+  // Platform kotu = arazi kotu (proje kotu bilinmiyor)
+  const platTop=ariziZ+SUBBALAST;
+  const atZ=ariziZ-ALTTEMEL;
+
+  // Yarma mi dolgu mu?
+  // Eksen etrafinda +-15m arasindaki max arazi kotu
+  const yanArazi=profile.filter(p=>Math.abs(p[0])>=5&&Math.abs(p[0])<=30).map(p=>p[1]);
+  const maxYanArazi=yanArazi.length>0?Math.max(...yanArazi):ariziZ;
+  const minYanArazi=yanArazi.length>0?Math.min(...yanArazi):ariziZ;
+  
+  // Yarma: yan arazi eksen arazisinden yÃ¼ksek (kazÄ± gerekiyor)
+  // Dolgu: yan arazi eksen arazisinden dusuk (dolgu gerekiyor)
+  const isYarma=(maxYanArazi-ariziZ)>1.0;
+  const isDolgu=(ariziZ-minYanArazi)>1.0;
 
   // Viewport
-  const xRange=Math.max(80,Math.abs(Math.min(...xs))+5,Math.abs(Math.max(...xs))+5);
-  const zRange=Math.max(...zs,platTop+20)-Math.min(...zs,kazikotu-3);
+  const allZ=[...zs,platTop+15,atZ-2];
+  const zmin=Math.min(...allZ)-2;
+  const zmax=Math.max(...allZ)+3;
+  const xRange=Math.max(70,Math.max(...xs.map(Math.abs))+5);
   const xmin=-xRange,xmax=xRange;
-  const zmin=Math.min(...zs,kazikotu)-3;
-  const zmax=Math.max(...zs,platTop)+Math.min(20,zRange*0.3)+3;
 
-  const pad={l:45,r:15,t:20,b:35};
+  const pad={l:45,r:12,t:22,b:35};
   const cw=W-pad.l-pad.r,ch=H-pad.t-pad.b;
   function tx(x){return pad.l+(x-xmin)/(xmax-xmin)*cw;}
   function tz(z){return pad.t+ch-(z-zmin)/(zmax-zmin)*ch;}
 
-  // Grid
+  // Grid yatay
   ctx.strokeStyle='#1a2a1a';ctx.lineWidth=0.3;
-  const zstep=zRange>30?10:5;
+  const zstep=(zmax-zmin)>25?10:5;
   for(let z=Math.ceil(zmin/zstep)*zstep;z<=zmax;z+=zstep){
     ctx.beginPath();ctx.moveTo(pad.l,tz(z));ctx.lineTo(pad.l+cw,tz(z));ctx.stroke();
     ctx.fillStyle='#6b7280';ctx.font='8px sans-serif';ctx.textAlign='right';
     ctx.fillText(z.toFixed(0),pad.l-2,tz(z)+3);
   }
-  for(let x=-80;x<=80;x+=20){
+  // Grid dikey
+  for(let x=-60;x<=60;x+=20){
     ctx.beginPath();ctx.moveTo(tx(x),pad.t);ctx.lineTo(tx(x),pad.t+ch);ctx.stroke();
     ctx.fillStyle='#6b7280';ctx.font='8px sans-serif';ctx.textAlign='center';
     ctx.fillText((x>=0?'+':'')+x,tx(x),H-5);
   }
 
-  // Tabi zemin - dolu alan
+  // Tabi zemin dolgu
   ctx.beginPath();
   ctx.moveTo(tx(xmin),tz(zmin));
   for(let i=0;i<profile.length;i++) ctx.lineTo(tx(profile[i][0]),tz(profile[i][1]));
@@ -132,160 +146,158 @@ function drawKesit(profile,axisZ){
   }
   ctx.stroke();
 
-  // === TIP KESIT CIZIMI ===
-  // Platform genisligi: iki hat + bakÄ±m yollarÄ±
-  // Sol hat ekseni: -HAT_ARASI/2, Sag hat ekseni: +HAT_ARASI/2
-  const hatL=-HAT_ARASI/2;
-  const hatR=+HAT_ARASI/2;
-  const platL=-(PLATFORM_W);
-  const platR=+(PLATFORM_W);
+  // === PLATFORM ===
+  // Alttemel
+  ctx.fillStyle='rgba(180,140,80,0.45)';
+  ctx.strokeStyle='#a87d3c';ctx.lineWidth=0.5;
+  ctx.beginPath();
+  ctx.moveTo(tx(-PLATFORM_W),tz(ariziZ));ctx.lineTo(tx(PLATFORM_W),tz(ariziZ));
+  ctx.lineTo(tx(PLATFORM_W),tz(atZ));ctx.lineTo(tx(-PLATFORM_W),tz(atZ));
+  ctx.closePath();ctx.fill();ctx.stroke();
 
-  // KazÄ±/dolgu tabanÄ±
-  const sevBasL=platL-BAKIM_OFF-BAKIM_YOLU;
-  const sevBasR=platR+BAKIM_OFF+BAKIM_YOLU;
+  // Subbalast
+  ctx.fillStyle='rgba(160,160,160,0.45)';
+  ctx.strokeStyle='#9ca3af';ctx.lineWidth=0.5;
+  ctx.beginPath();
+  ctx.moveTo(tx(-PLATFORM_W),tz(platTop));ctx.lineTo(tx(PLATFORM_W),tz(platTop));
+  ctx.lineTo(tx(PLATFORM_W),tz(ariziZ));ctx.lineTo(tx(-PLATFORM_W),tz(ariziZ));
+  ctx.closePath();ctx.fill();ctx.stroke();
 
-  // Subbalast yÃ¼zeyi
-  const sbZ=axisZ+SUBBALAST;
-  // Platform yÃ¼zey kotu
-  const platZ=sbZ;
+  // Platform ust cizgisi
+  ctx.strokeStyle='#d1d5db';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(tx(-PLATFORM_W),tz(platTop));ctx.lineTo(tx(PLATFORM_W),tz(platTop));ctx.stroke();
 
-  // Alttemel tabanÄ±
-  const atZ=axisZ-ALTTEMEL;
-
-  // DOLGU veya YARMA sevi
-  function cizSev(ctx,tx,tz,startX,startZ,yon,isYarma,ariziZ,platZ){
-    // yon: +1 sag, -1 sol
+  // Bakim yollari
+  for(const side of [-1,1]){
+    const bx1=side>0?PLATFORM_W:-(PLATFORM_W+BAKIM_YOLU);
+    const bx2=side>0?PLATFORM_W+BAKIM_YOLU:-PLATFORM_W;
+    ctx.fillStyle='rgba(80,60,20,0.35)';
+    ctx.strokeStyle='#78716c';ctx.lineWidth=0.5;
     ctx.beginPath();
-    ctx.moveTo(tx(startX),tz(startZ));
-    let prevX=startX,prevZ=startZ;
-    let palyeSayisi=0;
-    for(let d=0;d<=80;d+=0.2){
-      let x=startX+yon*d;
-      let z;
-      if(isYarma){
-        z=startZ+d*0.5; // 2/1 -> her 2m yatayda 1m yukari
-        // Palye kontrolu
-        if(d>0&&Math.floor(d/PALYE_H)>palyeSayisi){
-          palyeSayisi++;
-          // Palye ciz - yatay 0.5m
+    ctx.moveTo(tx(bx1),tz(platTop));ctx.lineTo(tx(bx2),tz(platTop));
+    ctx.lineTo(tx(bx2),tz(atZ));ctx.lineTo(tx(bx1),tz(atZ));
+    ctx.closePath();ctx.fill();ctx.stroke();
+    // Bakim yolu yuzey cizgisi
+    ctx.strokeStyle='#a37c44';ctx.lineWidth=0.8;
+    ctx.beginPath();ctx.moveTo(tx(bx1),tz(platTop-0.02));ctx.lineTo(tx(bx2),tz(platTop-0.02));ctx.stroke();
+  }
+
+  // SEVLER
+  const sevBasL=-(PLATFORM_W+BAKIM_YOLU);
+  const sevBasR=+(PLATFORM_W+BAKIM_YOLU);
+
+  if(isYarma){
+    // YARMA sevi - yukari gider, 2/1
+    ctx.strokeStyle='#3b82f6';ctx.lineWidth=1.5;
+    for(const [start,yon] of [[sevBasL,-1],[sevBasR,1]]){
+      ctx.beginPath();ctx.moveTo(tx(start),tz(platTop));
+      let palyeSay=0;
+      for(let d=0.5;d<=60;d+=0.5){
+        const x=start+yon*d;
+        const z=platTop+d/SEV;
+        if(Math.floor(d/PALYE_H)>palyeSay){
+          palyeSay++;
           ctx.lineTo(tx(x),tz(z));
           ctx.lineTo(tx(x+yon*0.5),tz(z));
-          prevX=x+yon*0.5;prevZ=z;
         }
-      }else{
-        z=startZ-d*0.5; // dolgu: asagi iner
+        ctx.lineTo(tx(x),tz(z));
+        if(z>maxYanArazi+2)break;
       }
-      ctx.lineTo(tx(x),tz(z));
-      if(isYarma&&z>=ariziZ+1)break;
-      if(!isYarma&&z<=ariziZ-0.5)break;
+      ctx.stroke();
+    }
+    // Kafa hendegi
+    for(const [sx,yon] of [[sevBasL,-1],[sevBasR,1]]){
+      const hx=sx+yon*((maxYanArazi-platTop)*SEV);
+      ctx.strokeStyle='#93c5fd';ctx.lineWidth=0.8;
+      ctx.beginPath();
+      ctx.moveTo(tx(hx),tz(maxYanArazi));
+      ctx.lineTo(tx(hx+yon*0.3),tz(maxYanArazi-0.5));
+      ctx.lineTo(tx(hx+yon*0.6),tz(maxYanArazi));
+      ctx.stroke();
+    }
+  }else if(isDolgu){
+    // DOLGU sevi - asagi iner, 2/1
+    ctx.strokeStyle='#f97316';ctx.lineWidth=1.5;
+    for(const [start,yon] of [[sevBasL,-1],[sevBasR,1]]){
+      ctx.beginPath();ctx.moveTo(tx(start),tz(platTop));
+      for(let d=0.5;d<=60;d+=0.5){
+        const x=start+yon*d;
+        const z=platTop-d/SEV;
+        ctx.lineTo(tx(x),tz(z));
+        if(z<minYanArazi-1)break;
+      }
+      ctx.stroke();
+    }
+    // Topuk hendegi
+    ctx.strokeStyle='#fdba74';ctx.lineWidth=0.8;
+  }else{
+    // Duz arazi - platform kenari
+    ctx.strokeStyle='#22c55e';ctx.lineWidth=1;
+    for(const [start,yon] of [[sevBasL,-1],[sevBasR,1]]){
+      ctx.beginPath();ctx.moveTo(tx(start),tz(platTop));
+      ctx.lineTo(tx(start+yon*3),tz(platTop-0.5));
+      ctx.stroke();
+    }
+  }
+
+  // Tel cit
+  for(const side of [-1,1]){
+    const cx=side*(PLATFORM_W+BAKIM_YOLU+0.5);
+    ctx.strokeStyle='#6b7280';ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.moveTo(tx(cx),tz(platTop));ctx.lineTo(tx(cx),tz(platTop+1.5));ctx.stroke();
+    ctx.beginPath();
+    for(let y=0;y<=1.5;y+=0.3){
+      ctx.moveTo(tx(cx-0.1),tz(platTop+y));ctx.lineTo(tx(cx+0.1),tz(platTop+y));
     }
     ctx.stroke();
   }
 
-  // Platform ust yÃ¼zeyi (subbalast ustu)
-  ctx.fillStyle='rgba(180,180,180,0.15)';
-  ctx.strokeStyle='#9ca3af';ctx.lineWidth=0.8;
-  ctx.beginPath();
-  ctx.moveTo(tx(platL),tz(platZ));
-  ctx.lineTo(tx(platR),tz(platZ));
-  ctx.lineTo(tx(platR),tz(atZ));
-  ctx.lineTo(tx(platL),tz(atZ));
-  ctx.closePath();
-  ctx.fill();ctx.stroke();
-
-  // Subbalast katmani (gri)
-  ctx.fillStyle='rgba(150,150,150,0.4)';
-  ctx.beginPath();
-  ctx.moveTo(tx(platL),tz(platZ));
-  ctx.lineTo(tx(platR),tz(platZ));
-  ctx.lineTo(tx(platR),tz(axisZ));
-  ctx.lineTo(tx(platL),tz(axisZ));
-  ctx.closePath();ctx.fill();
-  ctx.strokeStyle='#9ca3af';ctx.lineWidth=0.5;ctx.stroke();
-
-  // Alttemel katmani (acik kahve)
-  ctx.fillStyle='rgba(180,140,80,0.4)';
-  ctx.beginPath();
-  ctx.moveTo(tx(platL),tz(axisZ));
-  ctx.lineTo(tx(platR),tz(axisZ));
-  ctx.lineTo(tx(platR),tz(atZ));
-  ctx.lineTo(tx(platL),tz(atZ));
-  ctx.closePath();ctx.fill();
-
-  // Bakim yollari
-  for(const side of [-1,1]){
-    const bx1=side>0?platR:platL-BAKIM_YOLU;
-    const bx2=side>0?platR+BAKIM_YOLU:platL;
-    ctx.fillStyle='rgba(100,80,40,0.3)';
-    ctx.strokeStyle='#78716c';ctx.lineWidth=0.5;
-    ctx.beginPath();
-    ctx.moveTo(tx(bx1),tz(platZ));ctx.lineTo(tx(bx2),tz(platZ));
-    ctx.lineTo(tx(bx2),tz(atZ));ctx.lineTo(tx(bx1),tz(atZ));
-    ctx.closePath();ctx.fill();ctx.stroke();
+  // Raylar
+  for(const hx of [hatL-0.725,hatL+0.725,hatR-0.725,hatR+0.725]){
+    // Ray profili
+    ctx.fillStyle='#94a3b8';
+    ctx.fillRect(tx(hx)-1.2,tz(platTop)-7,2.4,2);  // ray basi
+    ctx.fillRect(tx(hx)-0.6,tz(platTop)-5,1.2,5);  // ray govdesi
+    ctx.fillRect(tx(hx)-1.5,tz(platTop)-1,3,1);    // ray tabani
   }
 
-  // Sevler
-  ctx.lineWidth=1.5;
-  if(isYarma){
-    ctx.strokeStyle='#60a5fa';
-    cizSev(ctx,tx,tz,platL+BAKIM_YOLU*(-1),platZ,-1,true,ariziZ,platZ);
-    cizSev(ctx,tx,tz,platR+BAKIM_YOLU,platZ,1,true,ariziZ,platZ);
-  }else{
-    ctx.strokeStyle='#fb923c';
-    cizSev(ctx,tx,tz,platL-BAKIM_YOLU,platZ,-1,false,ariziZ,platZ);
-    cizSev(ctx,tx,tz,platR+BAKIM_YOLU,platZ,1,false,ariziZ,platZ);
-  }
-
-  // Raylar - sol hat
-  for(const rx of [hatL-0.725,hatL+0.725,hatR-0.725,hatR+0.725]){
-    ctx.fillStyle='#6b7280';
-    ctx.fillRect(tx(rx)-1,tz(platZ)-8,2,8);
-    ctx.fillStyle='#374151';
-    ctx.fillRect(tx(rx)-3,tz(platZ)-2,6,3);
-  }
-
-  // Traversler (sembolik)
+  // Travers (sembolik)
+  ctx.fillStyle='rgba(60,60,60,0.7)';
   for(const hx of [hatL,hatR]){
-    ctx.fillStyle='rgba(80,80,80,0.6)';
-    ctx.fillRect(tx(hx)-1.2,tz(platZ)-0.5,2.4,(tz(axisZ)-tz(platZ))*0.6);
+    ctx.fillRect(tx(hx-1.4),tz(platTop)-0.5,tx(hx+1.4)-tx(hx-1.4),(tz(platTop-0.17)-tz(platTop)));
   }
 
-  // Eksen cizgisi
-  ctx.strokeStyle='#ef4444';ctx.lineWidth=1;ctx.setLineDash([4,3]);
+  // Eksen ve hat eksenleri
+  ctx.strokeStyle='#ef4444';ctx.lineWidth=0.8;ctx.setLineDash([3,3]);
   ctx.beginPath();ctx.moveTo(tx(0),pad.t);ctx.lineTo(tx(0),pad.t+ch);ctx.stroke();
+  for(const hx of [hatL,hatR]){
+    ctx.strokeStyle='rgba(239,68,68,0.35)';ctx.lineWidth=0.5;
+    ctx.beginPath();ctx.moveTo(tx(hx),pad.t);ctx.lineTo(tx(hx),pad.t+ch);ctx.stroke();
+  }
   ctx.setLineDash([]);
   ctx.fillStyle='#ef4444';ctx.font='bold 8px sans-serif';ctx.textAlign='center';
-  ctx.fillText('CL',tx(0),pad.t+8);
+  ctx.fillText('CL',tx(0),pad.t+9);
 
-  // Sol/sag hat eksenleri
-  for(const hx of [hatL,hatR]){
-    ctx.strokeStyle='rgba(239,68,68,0.4)';ctx.lineWidth=0.5;ctx.setLineDash([2,4]);
-    ctx.beginPath();ctx.moveTo(tx(hx),pad.t);ctx.lineTo(tx(hx),pad.t+ch);ctx.stroke();
-    ctx.setLineDash([]);
-  }
+  // Etiketler
+  const tip=isYarma?'YARMA':(isDolgu?'DOLGU':'DUZLUK');
+  const tipColor=isYarma?'#60a5fa':(isDolgu?'#f97316':'#22c55e');
+  ctx.fillStyle=tipColor;ctx.font='bold 10px sans-serif';ctx.textAlign='left';
+  ctx.fillText(tip,pad.l+4,pad.t+12);
 
-  // Yazi etiketleri
-  ctx.font='bold 9px sans-serif';ctx.textAlign='center';
-  const tip=isYarma?'YARMA':'DOLGU';
-  const tipColor=isYarma?'#60a5fa':'#fb923c';
-  ctx.fillStyle=tipColor;
-  ctx.fillText(tip,tx(0),pad.t+18);
+  ctx.fillStyle='#fbbf24';ctx.font='8px sans-serif';
+  ctx.fillText('Arazi: '+ariziZ.toFixed(2)+'m',W-90,pad.t+10);
 
-  ctx.fillStyle='#9ca3af';ctx.font='8px sans-serif';
-  ctx.fillText('SUBBALAST',tx(0),tz(axisZ+SUBBALAST/2)+3);
-  ctx.fillText('ALTTEMEL',tx(platR+BAKIM_YOLU/2+2),tz(axisZ-ALTTEMEL/2)+3);
-
-  // Boyutlar - platform genisligi
+  // Boyut oku - platform
+  const arrowY=tz(atZ)-8;
   ctx.strokeStyle='#4b5563';ctx.lineWidth=0.5;
-  ctx.beginPath();ctx.moveTo(tx(platL),tz(zmin+1));ctx.lineTo(tx(platR),tz(zmin+1));ctx.stroke();
-  ctx.fillStyle='#6b7280';ctx.font='8px sans-serif';ctx.textAlign='center';
-  ctx.fillText((platR*2).toFixed(1)+'m',tx(0),tz(zmin+1)-2);
+  ctx.beginPath();ctx.moveTo(tx(-PLATFORM_W),arrowY);ctx.lineTo(tx(PLATFORM_W),arrowY);ctx.stroke();
+  ctx.fillStyle='#6b7280';ctx.font='7px sans-serif';ctx.textAlign='center';
+  ctx.fillText((PLATFORM_W*2).toFixed(1)+'m platform',tx(0),arrowY-2);
 
-  // Kot etiketi
-  ctx.fillStyle='#fbbf24';ctx.font='8px sans-serif';ctx.textAlign='left';
-  ctx.fillText('Arazi: '+ariziZ.toFixed(2)+'m',pad.l+3,pad.t+H-pad.t-pad.b-5);
-  ctx.fillStyle='#34d399';
-  ctx.fillText('Eksen: '+axisZ.toFixed(2)+'m',pad.l+3,pad.t+H-pad.t-pad.b+5);
+  // Subbalast etiketi
+  ctx.fillStyle='#9ca3af';ctx.font='7px sans-serif';ctx.textAlign='center';
+  ctx.fillText('Subbalast 30cm',tx(0),tz(ariziZ+SUBBALAST/2)+2);
+  ctx.fillText('Alttemel 35cm',tx(0),tz(ariziZ-ALTTEMEL/2)+2);
 }
 
 // KM etiketleri
